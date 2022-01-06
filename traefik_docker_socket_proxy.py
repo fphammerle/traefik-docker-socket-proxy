@@ -2,7 +2,7 @@
 HTTP Reverse-Proxy for Docker Socket, Exposing Only Endpoints Required by Traefik
 Copyright (C) 2021 Fabian Peter Hammerle <fabian.github@hammerle.me>
 
-Tested with Traefik v2.5.6 and Docker v20.10.7 in docker.io/python:3.9.4-alpine image.
+Tested in docker.io/python:3.9.4-alpine image with Traefik v2.5.6 and Docker v20.10.7.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License version 3

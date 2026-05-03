@@ -51,15 +51,26 @@ class _HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         client_address: typing.Tuple[str, int],
         server: http.server.HTTPServer,
         unprotected_socket_path: pathlib.Path,
+        minimum_minor_api_version: typing.Optional[int],
         client_ip_address_allowlist: typing.Set[str],
     ) -> None:
         self._unprotected_socket_path = unprotected_socket_path
+        self._minimum_minor_api_version = minimum_minor_api_version
         self._client_ip_address_allowlist = client_ip_address_allowlist
         super().__init__(request=request, client_address=client_address, server=server)
 
     def _request(self) -> http.client.HTTPResponse:
+        path = self.path
+        # > client version 1.24 is too old. Minimum supported API version is
+        # . 1.44, please upgrade your client to a newer version
+        if self._minimum_minor_api_version is not None and (
+            version_match := re.match(r"\/v1\.(\d+)/", path)
+        ):
+            (minor_version,) = map(int, version_match.groups())
+            if minor_version < self._minimum_minor_api_version:
+                path = f"/v1.{self._minimum_minor_api_version}/" + path[7:]
         connection = _HttpConnectionUnixSocket(self._unprotected_socket_path)
-        connection.request(method=self.command, url=self.path)
+        connection.request(method=self.command, url=path)
         return connection.getresponse()
 
     def _request_json(
@@ -186,6 +197,7 @@ def _main():
         default=pathlib.Path("/var/run/docker.sock"),
         help="default: %(default)s",
     )
+    argparser.add_argument("--minimum-minor-api-version", type=int)
     argparser.add_argument(
         "--protected-port", type=int, default=2375, help="default: %(default)u"
     )
@@ -204,6 +216,7 @@ def _main():
         RequestHandlerClass=functools.partial(
             _HTTPRequestHandler,
             unprotected_socket_path=args.unprotected_socket_path,
+            minimum_minor_api_version=args.minimum_minor_api_version,
             client_ip_address_allowlist=set(args.client_ip_address_allowlist),
         ),
     ) as http_server:
